@@ -1,0 +1,25 @@
+{
+    "cells": [
+        {
+            "language": "markdown",
+            "source": [
+                "## Assignment 1: Understanding the `map` operator\r\n\r\nIn this assignment, you will use the `map` operator to transform an array of numbers.\r\n\r\n**Instructions:**\r\n1. Create an observable from the array [1, 2, 3, 4, 5].\r\n2. Use the `map` operator to square each number.\r\n3. Subscribe to the observable and print the transformed values.\r\n\r\n**Your task:**\r\nImplement the code for the instructions above in the code cell below."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "import { from } from 'rxjs';\r\nimport { map, tap } from 'rxjs/operators';\r\n\r\nconst numbers = [1, 2, 3, 4, 5];\r\nconst observable = from(numbers).pipe(\r\n    map(x => x ** 2));\r\n\r\n// Subscribe and print the transformed values\r\nawait observable.pipe(\r\n//    tap(console.log)\r\n).toPromise();\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "import { from } from 'rxjs';\r\nimport { map, tap } from 'rxjs/operators';\r\n\r\nconst numbers = [1, 2, 3];\r\nconst observable = from(numbers).pipe(\r\n    map(x => x ** 2));\r\n\r\n// Subscribe and print the transformed values\r\nawait observable.pipe(\r\n//    tap(console.log)\r\n).toPromise();"
+            ],
+            "outputs": []
+        }
+    ]
+}
