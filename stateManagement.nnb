@@ -3,21 +3,154 @@
         {
             "language": "markdown",
             "source": [
-                "## Assignment 1: Understanding the `map` operator\r\n\r\nIn this assignment, you will use the `map` operator to transform an array of numbers.\r\n\r\n**Instructions:**\r\n1. Create an observable from the array [1, 2, 3, 4, 5].\r\n2. Use the `map` operator to square each number.\r\n3. Subscribe to the observable and print the transformed values.\r\n\r\n**Your task:**\r\nImplement the code for the instructions above in the code cell below."
+                "# Introduction\r\n\r\nThis knowledge session is about state management with RX observables.\r\n\r\nSometimes we find ourselves in a situation where we have a stream of events, and we want to show the current state of something.\r\n\r\nA simple example is a bank account. You want to display the current balance but you only have a list (or stream) of transactions.\r\n\r\nIn dev language, the process we want to execute for this is called aggregation or reduction. Multiple events are aggregated or reduced to a single state.\r\n\r\nA popular library often used in the frontend to implement this pattern in a reactive way is called [redux](https://redux.js.org/), or one of its derivatives like [ngrx](https://ngrx.io/) or [ngxs](https://www.ngxs.io/).\r\n\r\nWe (currently) don't use any of those. Luckily this pattern is easily implementable in RX using the `scan` operator."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "\r\n# The `reduce` operator\r\n\r\nThe `scan` operator looks a lot like the `reduce` operator. The difference is that `reduce` works on arrays where `scan` works on observables. To get a feel for it, lets first look again what the `reduce` operator was for.\r\n\r\nSuppose I have a list of numbers."
             ],
             "outputs": []
         },
         {
             "language": "typescript",
             "source": [
-                "import { from } from 'rxjs';\r\nimport { map, tap } from 'rxjs/operators';\r\n\r\nconst numbers = [1, 2, 3, 4, 5];\r\nconst observable = from(numbers).pipe(\r\n    map(x => x ** 2));\r\n\r\n// Subscribe and print the transformed values\r\nawait observable.pipe(\r\n//    tap(console.log)\r\n).toPromise();\r\n"
+                "const listOfNumbers = [1,2,3,4,5,6,7,8,9,10];"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "Now I want to add all these numbers together. Of course we can use a for loop, but to demonstrate aggregations, lets use `reduce`."
             ],
             "outputs": []
         },
         {
             "language": "typescript",
             "source": [
-                "import { from } from 'rxjs';\r\nimport { map, tap } from 'rxjs/operators';\r\n\r\nconst numbers = [1, 2, 3];\r\nconst observable = from(numbers).pipe(\r\n    map(x => x ** 2));\r\n\r\n// Subscribe and print the transformed values\r\nawait observable.pipe(\r\n//    tap(console.log)\r\n).toPromise();"
+                "listOfNumbers\r\n  .reduce((aggregate, current) => aggregate + current, 0);\r\n\r\n// 55"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "What happens here?\r\nThe `reduce` operator takes an aggregation function that has 2 arguments:\r\n* The aggregate (or previous) value\r\n* The current value\r\n\r\nIt expects you to return a new value that combines the 2 somehow. In our case it adds them together. The next iteration the return value is passed as aggregate.\r\nOn the first iteration, the initial aggregate value (or seed) is passed, which in our case is 0 (passed as second argument of the `reduce` operator).\r\n\r\nSo in our case, the aggregation function is called like this:\r\n\r\n1. aggregationFunction(0, 1) -> 1\r\n2. aggregationFunction(1, 2) -> 3\r\n3. aggregationFunction(3, 3) -> 6\r\n4. aggregationFunction(6, 4) -> 10\r\n5. aggregationFunction(10, 5) -> 15\r\n6. aggregationFunction(15, 6) -> 21\r\n7. aggregationFunction(21, 7) -> 28\r\n8. aggregationFunction(28, 8) -> 36\r\n9. aggregationFunction(36, 9) -> 45\r\n10. aggregationFunction(45, 10) -> 55\r\n\r\nThe final aggregate value is returned which is 55.\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "## Assigment 1\r\n\r\nChange following statement such that it multiplies all numbers together, instead of adding them."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "listOfNumbers\r\n  .reduce((aggregate, current) => aggregate + current, 0);\r\n// 3628800"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "Hint: If you keep getting zero, think of what happens when you pass 0 as first aggregate value."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "## The `scan` operator\r\n\r\nThe `scan` operator for observables works almost exactly like the `reduce` operator from a list. See output of following code for the difference."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "import { from } from 'rxjs';\r\nimport { scan } from 'rxjs/operators';\r\n\r\n// Create an observable that emits the values from our list of numbers\r\nconst listOfNumbers$ = from(listOfNumbers);\r\n\r\n// Create a observable that emits our aggregation.\r\n// Note that scan is used instead of reduce.\r\nconst aggregation$ = listOfNumbers$.pipe(\r\n    scan((aggregate, current) => aggregate + current, 0));\r\n\r\n// If we subscribe it, note that we receive all intermediate\r\n// aggregation values as well.\r\naggregation$.subscribe(console.log);\r\n// 1, 3, 6, 10, 15, 21, 28, 36, 45, 55\r\n\r\n// Give it some time to iterate the whole list.\r\nawait new Promise(resolve => setTimeout(resolve, 100));\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "## Assignment 2\r\n\r\nSee if you can change previous code again to output multiplications.\r\n\r\nFun fact: rxjs also knows the `reduce` operator. It has the exact same signature as `scan`, but acts a little different. See if you can use that instead of `scan` and find out how it behaves differently. Hint: Now you know about `Array.reduce` already, it should be quite obvious ;P"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "# About the rest\r\n\r\nAs you can see, aggregation or reduction is a general concept and can be applied to lists and observables.\r\nFor demo purposes it is however easier to work with JavaScript Arrays than with Observable since it requires less boilerplate. Hence examples are done using Arrays in this doc.\r\n\r\nJust do as if the provided arrays are streams of values instead of lists of values. It's easily translatable."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "# Account balance example\r\n\r\nConsider the following models:"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// State\r\ntype Account = {\r\n    balance: number;\r\n}\r\n\r\n// Events\r\ntype CreditEvent = {\r\n    type: 'CreditEvent',\r\n    amount: number\r\n}\r\n\r\ntype DebitEvent = {\r\n    type: 'DebitEvent',\r\n    amount: number\r\n}\r\n\r\n// AccountEvent is one of above events.\r\ntype AccountEvent = CreditEvent | DebitEvent;\r\n\r\n// Type of function that returns an account given a stream of events\r\ntype GetAccount = (events: AccountEvent[]) => Account;\r\n\r\n// Handle a single event.\r\n// As input we get an account and an event.\r\n// As output we return a modified account\r\ntype HandleAccountEvent<TEvent extends AccountEvent> =\r\n    (account: Account, event: TEvent) => Account;\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "Lets define some helper functions to be able to implement our account function.\r\nFor every event we need to define a handler."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// One for every event\r\nconst handleCreditEvent: HandleAccountEvent<CreditEvent> =\r\n  (account, event) => ({\r\n    ...account,\r\n    balance: account.balance + event.amount\r\n  });\r\n\r\nconst handleDebitEvent: HandleAccountEvent<DebitEvent> =\r\n  (account, event) => ({\r\n    ...account,\r\n    balance: account.balance - event.amount\r\n  });\r\n\r\n// One to dispatch all events\r\nconst handleAccountEvent: HandleAccountEvent<AccountEvent> =\r\n  (account, event) => {\r\n    switch (event.type) {\r\n        case 'CreditEvent': return handleCreditEvent(account, event);\r\n        case 'DebitEvent': return handleDebitEvent(account, event);\r\n    }\r\n  }\r\n\r\n// An empty account\r\nconst emptyAccount: Account = { balance: 0 };\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "And the following:"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// Our account event stream. For demo now just an array.\r\nlet accountEvents: AccountEvent[] = [\r\n    {\r\n        type: 'CreditEvent',\r\n        amount: 10\r\n    }, {\r\n        type: 'CreditEvent',\r\n        amount: 100\r\n    }, {\r\n        type: 'DebitEvent',\r\n        amount: 30\r\n    }\r\n];\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "Now we are asked to provide an implementation of our `GetAccount` function. Lets try something. Be sure to not use a `for` loop because `balanceEvents` is only an array for demo purposes, but would actually be an observable. But since most Array operators are also available for observable, we can simply use those."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "const getAccount: GetAccount =\r\n    events => events\r\n        .reduce(handleAccountEvent, emptyAccount);\r\n\r\ngetAccount(accountEvents);\r\n// {\r\n//  balance: 80\r\n// }\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "const getAccountInOneGo: GetAccount = events =>\r\n  events.reduce((aggregate, current) => {\r\n    switch(current.type){\r\n        case 'CreditEvent': return {\r\n            ...aggregate,\r\n            balance: aggregate.balance + current.amount\r\n        }\r\n        case 'DebitEvent': return {\r\n            ...aggregate,\r\n            balance: aggregate.balance - current.amount\r\n        }\r\n    }\r\n  },\r\n  { balance: 0 } as Account);\r\n\r\ngetAccountInOneGo(accountEvents);\r\n// {\r\n//    balance: 80\r\n// }"
             ],
             "outputs": []
         }
