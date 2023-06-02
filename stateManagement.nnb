@@ -220,7 +220,7 @@
         {
             "language": "typescript",
             "source": [
-                "import { scan } from 'rxjs/operators';\r\n\r\nconst getCurrentCallList: GetCurrentCallList =\r\n    incomingCall$ =>\r\n        incomingCall$.pipe(\r\n            // Use the function above to convert the incoming call stream\r\n            // into an event stream\r\n            toCallEvent$,\r\n            // Handle the events. In other words: reduce the events into current state\r\n            // which is the current list of calls.\r\n            scan(handleCallEvent));"
+                "import { scan } from 'rxjs/operators';\r\n\r\nconst getCurrentCallList: GetCurrentCallList =\r\n    incomingCall$ =>\r\n        incomingCall$.pipe(\r\n            // Use the function above to convert the incoming call stream\r\n            // into an event stream\r\n            toCallEvent$,\r\n            // Handle the events. In other words: reduce the events into current state\r\n            // which is the current list of calls.\r\n            scan(handleCallEvent, []));"
             ],
             "outputs": []
         },
@@ -297,14 +297,54 @@
         {
             "language": "typescript",
             "source": [
-                "type CallAction = (calls: FlattenedCall[]) => FlattenedCall[];\r\ntype SingleCallAction = (call: FlattenedCall) => FlattenedCall;\r\n\r\nconst handleSingleCall = (id: string, action: SingleCallAction): CallAction => calls =>\r\n        calls.map(call =>\r\n            call.id === id\r\n            ? action(call)\r\n            : call\r\n        );\r\n\r\nconst toCallAction$ = (incomingCall$: Observable<Call>): Observable<CallAction> =>\r\n  incomingCall$.pipe(\r\n    // for every new call, start monitoring it...\r\n    switchMap(newCall => merge([\r\n      // Handle call lifetime.\r\n      // Start with add call action. Wait until it becomes 'Idle', and then end with call remove action\r\n      concat(\r\n        // Emit an add call action\r\n        of<CallAction>(calls => calls.concat([{ ...emptyCall, id: newCall.id }])),\r\n        newCall.state$.pipe(takeWhile(state => state !== 'Idle')),\r\n        // Emit a call remove action\r\n        of<CallAction>(calls => calls.filter(call => call.id !== newCall.id )),\r\n      ),\r\n      // Monitor state and info to emit Call State Change and Call Info Change actions.\r\n      newCall.state$.pipe(\r\n        map((newState): CallAction => handleSingleCall(newCall.id, call => ({...call, state: newState })))),\r\n      newCall.info$.pipe(\r\n        map((newInfo): CallAction => handleSingleCall(newCall.id, call => ({...call, info: newInfo })))),\r\n    ])));"
+                "type CallAction = (calls: FlattenedCall[]) => FlattenedCall[];\r\ntype SingleCallAction = (call: FlattenedCall) => FlattenedCall;\r\n\r\n// Convert an action on a single call, to an action on the call list.\r\nconst handleSingleCall = (id: string, action: SingleCallAction): CallAction => calls =>\r\n        calls.map(call =>\r\n            call.id === id\r\n            ? action(call)\r\n            : call\r\n        );\r\n\r\nconst toCallAction$ = (incomingCall$: Observable<Call>): Observable<CallAction> =>\r\n  incomingCall$.pipe(\r\n    // for every new call, start monitoring it...\r\n    switchMap(newCall => merge([\r\n      // Handle call lifetime.\r\n      // Start with add call action. Wait until it becomes 'Idle', and then end with call remove action\r\n      concat(\r\n        // Emit an add call action\r\n        of<CallAction>(calls => calls.concat([{ ...emptyCall, id: newCall.id }])),\r\n        newCall.state$.pipe(takeWhile(state => state !== 'Idle')),\r\n        // Emit a call remove action\r\n        of<CallAction>(calls => calls.filter(call => call.id !== newCall.id )),\r\n      ),\r\n      // Monitor state and info to emit Call State Change and Call Info Change actions.\r\n      newCall.state$.pipe(\r\n        map((newState): CallAction => handleSingleCall(newCall.id, call => ({...call, state: newState })))),\r\n      newCall.info$.pipe(\r\n        map((newInfo): CallAction => handleSingleCall(newCall.id, call => ({...call, info: newInfo })))),\r\n    ])));"
+            ],
+            "outputs": [
+                {
+                    "items": [
+                        {
+                            "mime": "application/vnd.code.notebook.stdout",
+                            "value": [
+                                "",
+                                ""
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "This `toCallAction$` may look complex and dounting at first. It takes a while to see whats going on. But, if you compare it to `toCallEvent$`, it doesn't look that different. And now you don't need all the boilerplate to create the events and the event handlers."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "### Assignment 7\r\n\r\nNow the only thing left is, implementing the `GetCurrentCallList` function. Instead of `toCallEvent$` we will now use `toCallAction$`.\r\n\r\nSee if you can implement the reducer (handler) in the `scan` function.\r\n\r\nHint: Look at previous assignment. But since we work with observables now, we use `scan` instead of `reduce`."
             ],
             "outputs": []
         },
         {
             "language": "typescript",
             "source": [
-                "const getAccountInOneGo: GetAccount = events =>\r\n  events.reduce((aggregate, current) => {\r\n    switch(current.type){\r\n        case 'CreditEvent': return {\r\n            ...aggregate,\r\n            balance: aggregate.balance + current.amount\r\n        }\r\n        case 'DebitEvent': return {\r\n            ...aggregate,\r\n            balance: aggregate.balance - current.amount\r\n        }\r\n    }\r\n  },\r\n  { balance: 0 } as Account);\r\n\r\ngetAccountInOneGo(accountEvents);\r\n// {\r\n//    balance: 80\r\n// }"
+                "const getCurrentCallList2: GetCurrentCallList =\r\n    incomingCall$ =>\r\n        incomingCall$.pipe(\r\n            // Use the function above to convert the incoming call stream\r\n            // into a stream of actions\r\n            toCallAction$,\r\n            // Handle the actions by simply executing them\r\n            scan((calls, action) => action(calls), []));"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "### Comparison and final thoughts\r\n\r\nAs said, the action pattern can look dounting. But if you compare `toCallAction$` to `toCallEvent$`, it doesn't look that much different.\r\n\r\nSo I state that the complexity comes from reducing a model to current state and not from the action pattern. Also the action pattern requires a lot less boilerplate.\r\n\r\nWhen you learn to recognize the action pattern, you'll see that it becomes easier to reason about what happens."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "# Conclusion\r\n\r\nThis concludes our journey through state management.\r\n\r\nWe learned what _aggregation_ or _reduction_ means in programming terms. In reactive programming, it means it is reducing a stream of events into (a stream of) current state.\r\n\r\nAs an example, we can reduce a stream of bank account transactions into a (stream of) bank account state with a current balance.\r\n\r\nWe also learned that not all models emit a neat stream of events. And we learned a technique to deal with that: 'the action pattern'. This way we can still extract 'current state' from such models in a way that doesn't need too much boilerplate.\r\n\r\nIt would be nice if you at least learn to recognize the action pattern. You might see it in action in PcaAttendantWeb in a few places. For a relatively small one, see e.g. `popup.service.ts`."
             ],
             "outputs": []
         }
