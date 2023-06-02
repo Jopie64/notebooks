@@ -10,7 +10,7 @@
         {
             "language": "markdown",
             "source": [
-                "\r\n# The `reduce` operator\r\n\r\nThe `scan` operator looks a lot like the `reduce` operator. The difference is that `reduce` works on arrays where `scan` works on observables. To get a feel for it, lets first look again what the `reduce` operator was for.\r\n\r\nSuppose I have a list of numbers."
+                "\r\n# The `reduce` operator\r\n\r\nThe `scan` operator looks a lot like the `reduce` operator. The major difference is that `reduce` works on arrays where `scan` works on observables. To get a feel for it, lets first look again what the `reduce` operator was for.\r\n\r\nSuppose I have a list of numbers."
             ],
             "outputs": []
         },
@@ -108,21 +108,21 @@
         {
             "language": "markdown",
             "source": [
-                "Lets define some helper functions to be able to implement our account function.\r\nFor every event we need to define a handler."
+                "## Assignment 3\r\n\r\nLets define some helper functions to be able to implement our account function.\r\nFor every event we need to define a handler. (Or in Redux they are called reducers.) Add the missing handler(s):"
             ],
             "outputs": []
         },
         {
             "language": "typescript",
             "source": [
-                "// One for every event\r\nconst handleCreditEvent: HandleAccountEvent<CreditEvent> =\r\n  (account, event) => ({\r\n    ...account,\r\n    balance: account.balance + event.amount\r\n  });\r\n\r\nconst handleDebitEvent: HandleAccountEvent<DebitEvent> =\r\n  (account, event) => ({\r\n    ...account,\r\n    balance: account.balance - event.amount\r\n  });\r\n\r\n// One to dispatch all events\r\nconst handleAccountEvent: HandleAccountEvent<AccountEvent> =\r\n  (account, event) => {\r\n    switch (event.type) {\r\n        case 'CreditEvent': return handleCreditEvent(account, event);\r\n        case 'DebitEvent': return handleDebitEvent(account, event);\r\n    }\r\n  }\r\n\r\n// An empty account\r\nconst emptyAccount: Account = { balance: 0 };\r\n"
+                "// One for every event\r\nconst handleCreditEvent: HandleAccountEvent<CreditEvent> =\r\n  (account, event) => ({\r\n    // With only one property, copying all other properties is not needed.\r\n    // But lets do it anyway since this is common practice and also future proof.\r\n    ...account,\r\n    balance: account.balance + event.amount\r\n  });\r\n\r\nconst handleDebitEvent: HandleAccountEvent<DebitEvent> =\r\n  (account, event) => ({\r\n    ...account,\r\n    balance: account.balance - event.amount\r\n  });\r\n\r\n// One to dispatch all events\r\nconst handleAccountEvent: HandleAccountEvent<AccountEvent> =\r\n  (account, event) => {\r\n    switch (event.type) {\r\n        case 'CreditEvent': return handleCreditEvent(account, event);\r\n        case 'DebitEvent': return handleDebitEvent(account, event);\r\n    }\r\n  }\r\n\r\n// An empty account\r\nconst emptyAccount: Account = { balance: 0 };\r\n"
             ],
             "outputs": []
         },
         {
             "language": "markdown",
             "source": [
-                "And the following:"
+                "Lets create some example account events:"
             ],
             "outputs": []
         },
@@ -136,7 +136,7 @@
         {
             "language": "markdown",
             "source": [
-                "Now we are asked to provide an implementation of our `GetAccount` function. Lets try something. Be sure to not use a `for` loop because `balanceEvents` is only an array for demo purposes, but would actually be an observable. But since most Array operators are also available for observable, we can simply use those."
+                "## Assignment 4\r\n\r\nNow you are asked to provide an implementation of our `GetAccount` function. Be sure to not use a `for` loop because `balanceEvents` is only an array for demo purposes, but would actually be an observable. But since most Array operators, like `reduce` (hint :P), are also available for observable, we can simply use those."
             ],
             "outputs": []
         },
@@ -144,6 +144,160 @@
             "language": "typescript",
             "source": [
                 "const getAccount: GetAccount =\r\n    events => events\r\n        .reduce(handleAccountEvent, emptyAccount);\r\n\r\ngetAccount(accountEvents);\r\n// {\r\n//  balance: 80\r\n// }\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "# More advanced\r\n\r\nIn case of the bank account model, we have a nice single stream of account events so we can create a handler for each type. But the development world is not always this nice. E.g. consider this model loosely based on ACS for web clients:"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "import { Observable } from 'rxjs';\r\n\r\n// Idle state means call is gone.\r\ntype CallState = 'Accepted' | 'Connected' | 'OnHold' | 'Idle';\r\n\r\ntype CallParticipant = {\r\n    name: string;\r\n    address: string;\r\n}\r\n\r\ntype CallInfo = {\r\n    caller: CallParticipant;\r\n    callee: CallParticipant;\r\n}\r\n\r\ntype Call = {\r\n    id: string;\r\n    info$: Observable<CallInfo>;\r\n    state$: Observable<CallState>;\r\n}\r\n\r\ntype GetIncomingCalls = (userId: string) => Observable<Call>;\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "Here we see a model with call objects. The objects themselves are not trivial data structures but have values that can change over time (except for the id), hence they are defined as `Observable`.\r\n\r\nNow suppose we are asked to implement a function that has the following signature:"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "type FlattenedCall = {\r\n    id: string;\r\n    info: CallInfo;\r\n    state: CallState;\r\n}\r\n\r\ntype GetCurrentCallList = (incomingCalls$: Observable<Call>) => Observable<FlattenedCall[]>;"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "Lets analyze this. The input is an observable that emits new incoming calls. The output is an observable that emits a list of flattened calls. It looks like the output should represent a list of current calls with immutable data. Whenever something changes (a new call comes in, a call goes away, some call data changes), it should emit an updated list of calls.\r\n\r\nTo implement this, we can consider several approaches."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "## Approach 1: Map everything to events first\r\n\r\nThe original data structure doesn't contain events... We could however make something to convert this model into a stream of events first. So lets try this approach:\r\n\r\n* Convert model into a stream of events\r\n* Create handlers or reducers to handle the events and modify the state (which is `FlattenedCall[]`) accordingly\r\n* Use the `scan` operator to actually call the handlers based on the event stream\r\n\r\nLets see how that looks like. First lets define all events and handlers."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "//Declare event models\r\ntype CallAddedEvent = {\r\n    type: 'CallAddedEvent';\r\n    id: string;\r\n}\r\n\r\ntype CallRemovedEvent = {\r\n    type: 'CallRemovedEvent';\r\n    id: string;\r\n}\r\n\r\ntype CallStateChangeEvent = {\r\n    type: 'CallStateChangeEvent';\r\n    id: string;\r\n    newState: CallState;\r\n}\r\n\r\ntype CallInfoChangeEvent = {\r\n    type: 'CallInfoChangeEvent';\r\n    id: string;\r\n    newInfo: CallInfo;\r\n}\r\n\r\ntype CallEvent = CallAddedEvent | CallRemovedEvent | CallStateChangeEvent | CallInfoChangeEvent;\r\n\r\ntype HandleCallEvent<T extends CallEvent> = (state: FlattenedCall[], event: T) => FlattenedCall[];\r\n\r\nconst emptyCallParticipant: CallParticipant = { name: '', address: '' };\r\nconst emptyCall: FlattenedCall = {\r\n    id: '',\r\n    info: { caller: emptyCallParticipant, callee: emptyCallParticipant },\r\n    state: 'Accepted',\r\n};\r\n\r\n// Declare event handlers:\r\nconst handleCallAddedEvent: HandleCallEvent<CallAddedEvent> =\r\n    (state, event) =>\r\n        // Make sure to use immutable methods. So not .push, but .concat to add an element.\r\n        state.concat([{ ...emptyCall, id: event.id }]);\r\n\r\nconst handleCallRemovedEvent: HandleCallEvent<CallRemovedEvent> =\r\n    (state, event) =>\r\n        state.filter(call => call.id !== event.id);\r\n\r\nconst handleCallStateChangeEvent: HandleCallEvent<CallStateChangeEvent> =\r\n    (state, event) =>\r\n        state.map(call =>\r\n            call.id === event.id\r\n            ? { ...call, state: event.newState }\r\n            : call\r\n        );\r\n\r\nconst handleCallInfoChangeEvent: HandleCallEvent<CallInfoChangeEvent> =\r\n    (state, event) =>\r\n        state.map(call =>\r\n            call.id === event.id\r\n            ? { ...call, info: event.newInfo }\r\n            : call\r\n        );\r\n\r\nconst handleCallEvent: HandleCallEvent<CallEvent> =\r\n    (state, event) => {\r\n        switch (event.type) {\r\n            case 'CallAddedEvent':       return handleCallAddedEvent(state, event);\r\n            case 'CallRemovedEvent':     return handleCallRemovedEvent(state, event);\r\n            case 'CallStateChangeEvent': return handleCallStateChangeEvent(state, event);\r\n            case 'CallInfoChangeEvent':  return handleCallInfoChangeEvent(state, event);\r\n        }\r\n    }\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "Now lets create a function that translates the `Observable<Call>` into a stream of events: `Observable<CallEvent>`."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "import { switchMap, map, takeWhile } from 'rxjs/operators';\r\nimport { concat, of, merge, Observable } from 'rxjs';\r\n\r\nconst toCallEvent$ = (incomingCall$: Observable<Call>): Observable<CallEvent> =>\r\n  incomingCall$.pipe(\r\n    // for every new call, start monitoring it...\r\n    switchMap(newCall => merge([\r\n      // Handle call lifetime.\r\n      // Start with CallAddedEvent. Wait until it becomes 'Idle', and then end with CallRemovedEvent\r\n      concat(\r\n        of<CallAddedEvent>({ type: 'CallAddedEvent', id: newCall.id }),\r\n        newCall.state$.pipe(takeWhile(state => state !== 'Idle')),\r\n        of<CallRemovedEvent>({ type: 'CallRemovedEvent', id: newCall.id }),\r\n      ),\r\n      // Monitor state and info to emit CallStateChangeEvent and CallInfoChangeEvent events.\r\n      newCall.state$.pipe(\r\n        map((newState): CallStateChangeEvent => ({ type: 'CallStateChangeEvent', id: newCall.id, newState }))),\r\n      newCall.info$.pipe(\r\n        map((newInfo): CallInfoChangeEvent => ({ type: 'CallInfoChangeEvent', id: newCall.id, newInfo })))\r\n    ])));"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "### Assignment 5\r\n\r\nNow we have everything to finally implement `GetCurrentCallList`. So, put it all together:"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "import { scan } from 'rxjs/operators';\r\n\r\nconst getCurrentCallList: GetCurrentCallList =\r\n    incomingCall$ =>\r\n        incomingCall$.pipe(\r\n            // Use the function above to convert the incoming call stream\r\n            // into an event stream\r\n            toCallEvent$,\r\n            // Handle the events. In other words: reduce the events into current state\r\n            // which is the current list of calls.\r\n            scan(handleCallEvent));"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "This method works. But, as you can see, it requires a lot of boilerplate. And this is a reduced example with only 4 events.\r\n\r\nTo reduce a bit of the boilerplate, I want to introduce a new pattern which we can use to merge the creation of the event and handling it. I call it 'the action pattern'."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "## The action pattern\r\n\r\nTo show the action pattern in action, lets go back to the simpler `Account` example first to demonstrate it. Although the Account example barely benefits from it since there is already an event stream, it's still a good way to show it in action.\r\n\r\nConsider following definition:\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "type AccountAction = (account: Account) => Account;"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "Here we introduce a new function type which takes an `Account` and returns an `Account`. The idea is that it represents a function that 'acts' on an account and returns a new version of it.\r\n\r\nNow consider this:"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "// Remember: in our account example we use arrays instead of observables. \r\nconst toAccountActions = (events: AccountEvent[]): AccountAction[] =>\r\n    events\r\n    .map((event): AccountAction => account => handleAccountEvent(account, event));\r\n"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "What... tf... is this...?\r\n\r\nLet's analyze... First look at the type of this `toAccountActions` function.\r\n\r\nIt takes in a list of account events, and returns a list of account actions. Ok, but an account _action_ is a _function_. So basically... it converts (`map`s) every event into a function. A function that takes an account and returns an account.\r\n\r\nHow does that function look like? Well, see this part:\r\n\r\n```javascript\r\naccount => handleAccountEvent(account, event)\r\n```\r\n\r\nSo indeed, this function takes an account, then passes it through `handleAccountEvent` which returns a changed account.\r\n\r\nOk... So now we have this `AccountAction` list. What shall we do with it?"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "### Assignment 6\r\n\r\nReimplement the `GetAccount` function using `toAccountActions`.\r\n\r\nHint: Look at the types of the 2 reducer arguments. See how you can put them together."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "const getAccount2: GetAccount =\r\n    events => toAccountActions(events)\r\n        .reduce((account, action) => action(account), emptyAccount);\r\n\r\ngetAccount2(accountEvents);\r\n// {\r\n//  balance: 80\r\n// }"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "Ok, lets see what we just did.\r\nFirst we created a list of account actions. After that, we reduced those actions into state. How did we do that? By using `reduce` to simply execute those actions."
+            ],
+            "outputs": []
+        },
+        {
+            "language": "markdown",
+            "source": [
+                "### Why is this useful?\r\n\r\nAs you can see, in our account example this doesn't look very useful. We even added a step by converting events into actions first using the existing event handler.\r\n\r\nBut in other cases there are no events. See the `Call` example. So in those cases we can now choose:\r\n* Convert the original model into a stream of events\r\n* Convert the original model into a stream of actions\r\n\r\nIn the first case, like what we saw, we have to define events first and then define handlers or reducers to handle them.\r\n\r\nIn the second case, as what you'll see here, you can combine those steps. Because an action 'handler' is just a simple call to the action. So now we just have to create actions out of the original model.\r\n\r\nLets see it in action:"
+            ],
+            "outputs": []
+        },
+        {
+            "language": "typescript",
+            "source": [
+                "type CallAction = (calls: FlattenedCall[]) => FlattenedCall[];\r\ntype SingleCallAction = (call: FlattenedCall) => FlattenedCall;\r\n\r\nconst handleSingleCall = (id: string, action: SingleCallAction): CallAction => calls =>\r\n        calls.map(call =>\r\n            call.id === id\r\n            ? action(call)\r\n            : call\r\n        );\r\n\r\nconst toCallAction$ = (incomingCall$: Observable<Call>): Observable<CallAction> =>\r\n  incomingCall$.pipe(\r\n    // for every new call, start monitoring it...\r\n    switchMap(newCall => merge([\r\n      // Handle call lifetime.\r\n      // Start with add call action. Wait until it becomes 'Idle', and then end with call remove action\r\n      concat(\r\n        // Emit an add call action\r\n        of<CallAction>(calls => calls.concat([{ ...emptyCall, id: newCall.id }])),\r\n        newCall.state$.pipe(takeWhile(state => state !== 'Idle')),\r\n        // Emit a call remove action\r\n        of<CallAction>(calls => calls.filter(call => call.id !== newCall.id )),\r\n      ),\r\n      // Monitor state and info to emit Call State Change and Call Info Change actions.\r\n      newCall.state$.pipe(\r\n        map((newState): CallAction => handleSingleCall(newCall.id, call => ({...call, state: newState })))),\r\n      newCall.info$.pipe(\r\n        map((newInfo): CallAction => handleSingleCall(newCall.id, call => ({...call, info: newInfo })))),\r\n    ])));"
             ],
             "outputs": []
         },
