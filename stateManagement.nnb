@@ -52,7 +52,7 @@
         {
             "language": "typescript",
             "source": [
-                "listOfNumbers\r\n  .reduce((aggregate, current) => aggregate + current, 0);\r\n// 3628800"
+                "listOfNumbers\r\n  .reduce((aggregate, current) => aggregate * current, 1);\r\n// 3628800"
             ],
             "outputs": []
         },
@@ -299,19 +299,7 @@
             "source": [
                 "type CallAction = (calls: FlattenedCall[]) => FlattenedCall[];\r\ntype SingleCallAction = (call: FlattenedCall) => FlattenedCall;\r\n\r\n// Convert an action on a single call, to an action on the call list.\r\nconst handleSingleCall = (id: string, action: SingleCallAction): CallAction => calls =>\r\n        calls.map(call =>\r\n            call.id === id\r\n            ? action(call)\r\n            : call\r\n        );\r\n\r\nconst toCallAction$ = (incomingCall$: Observable<Call>): Observable<CallAction> =>\r\n  incomingCall$.pipe(\r\n    // for every new call, start monitoring it...\r\n    switchMap(newCall => merge([\r\n      // Handle call lifetime.\r\n      // Start with add call action. Wait until it becomes 'Idle', and then end with call remove action\r\n      concat(\r\n        // Emit an add call action\r\n        of<CallAction>(calls => calls.concat([{ ...emptyCall, id: newCall.id }])),\r\n        newCall.state$.pipe(takeWhile(state => state !== 'Idle')),\r\n        // Emit a call remove action\r\n        of<CallAction>(calls => calls.filter(call => call.id !== newCall.id )),\r\n      ),\r\n      // Monitor state and info to emit Call State Change and Call Info Change actions.\r\n      newCall.state$.pipe(\r\n        map((newState): CallAction => handleSingleCall(newCall.id, call => ({...call, state: newState })))),\r\n      newCall.info$.pipe(\r\n        map((newInfo): CallAction => handleSingleCall(newCall.id, call => ({...call, info: newInfo })))),\r\n    ])));"
             ],
-            "outputs": [
-                {
-                    "items": [
-                        {
-                            "mime": "application/vnd.code.notebook.stdout",
-                            "value": [
-                                "",
-                                ""
-                            ]
-                        }
-                    ]
-                }
-            ]
+            "outputs": []
         },
         {
             "language": "markdown",
@@ -337,7 +325,7 @@
         {
             "language": "markdown",
             "source": [
-                "### Comparison and final thoughts\r\n\r\nAs said, the action pattern can look dounting. But if you compare `toCallAction$` to `toCallEvent$`, it doesn't look that much different.\r\n\r\nSo I state that the complexity comes from reducing a model to current state and not from the action pattern. Also the action pattern requires a lot less boilerplate.\r\n\r\nWhen you learn to recognize the action pattern, you'll see that it becomes easier to reason about what happens."
+                "### Comparison and final thoughts\r\n\r\nAs said, the action pattern can look dounting. But if you compare `toCallAction$` to `toCallEvent$`, it doesn't look that much different.\r\n\r\nSo I state that the complexity comes from reducing a model to current state and not from the action pattern itself. Also the action pattern requires a lot less boilerplate.\r\n\r\nWhen you learn to recognize the action pattern, you'll see that it becomes easier to reason about what happens."
             ],
             "outputs": []
         },
