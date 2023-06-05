@@ -23,7 +23,7 @@ git clone https://github.com/Jopie64/notebooks.git
 ```
 
 * Install vscode extension "Node.js Notebooks"
-* Open `stateManagement.md`
+* Open `stateManagement.nnb`
 * Don't cheat 😜
 
 ---
@@ -270,3 +270,120 @@ type FlattenedCalls = FlattenedCall[];
 ```
 
 ---
+
+### Advanced call challenge
+
+Function we need to implement:
+```ts
+type GetCurrentCallList = (incomingCalls$: Observable<Call>) => Observable<FlattenedCall[]>;
+```
+
+No events we can reduce to state 😐
+
+How to do that?
+
+---
+
+### Advanced call challenge
+
+Two approaches:
+1. Map everything to events first
+2. Super secret new approach
+
+---
+
+### Approach 1: Map everything to events first
+
+Steps:
+1. Define events
+2. Define handlers
+3. Convert original model into stream of those events
+4. Use `scan` to reduce events to state using handlers
+
+---
+
+#### 1. Define events
+
+```ts
+type CallAddedEvent = {
+    type: 'CallAddedEvent';
+    id: string;
+}
+
+type CallRemovedEvent = {
+    type: 'CallRemovedEvent';
+    id: string;
+}
+//...
+```
+
+---
+
+#### 2. Define handlers
+
+```ts
+const handleCallAddedEvent: HandleCallEvent<CallAddedEvent> =
+    (state, event) =>
+        // Make sure to use immutable methods.
+        // So not .push, but .concat to add an element.
+        state.concat([{ ...emptyCall, id: event.id }]);
+
+const handleCallRemovedEvent: HandleCallEvent<CallRemovedEvent> =
+    (state, event) =>
+        state.filter(call => call.id !== event.id);
+
+//...
+```
+
+---
+
+#### 3. Convert original model into stream of those events
+
+```ts
+const toCallEvent$ = (incomingCall$: Observable<Call>): Observable<CallEvent> =>
+  incomingCall$.pipe(
+    // for every new call, start monitoring it...
+    mergeMap(newCall => merge([
+      // Handle call lifetime.
+      // Start with CallAddedEvent. Wait until it becomes 'Idle', and then end with CallRemovedEvent
+      concat(
+        of<CallAddedEvent>({ type: 'CallAddedEvent', id: newCall.id }),
+        newCall.state$.pipe(takeWhile(state => state !== 'Idle')),
+        of<CallRemovedEvent>({ type: 'CallRemovedEvent', id: newCall.id }),
+      ),
+      // Monitor state and info to emit CallStateChangeEvent and CallInfoChangeEvent events.
+      newCall.state$.pipe(
+        map((newState): CallStateChangeEvent => ({ type: 'CallStateChangeEvent', id: newCall.id, newState }))),
+      newCall.info$.pipe(
+        map((newInfo): CallInfoChangeEvent => ({ type: 'CallInfoChangeEvent', id: newCall.id, newInfo })))
+    ])));
+```
+😱
+
+---
+#### 4. Use `scan` to reduce events to state using handlers
+
+#### Assignment 5: Put it all together
+
+```ts
+
+const getCurrentCallList: GetCurrentCallList =
+    incomingCall$ =>
+            // TODO: Implement me
+
+            // Use toCallEvent$ to convert the incoming call stream
+            // into an event stream
+
+            // Handle the events. In other words: reduce the events into current state
+            // which is the current list of calls.
+```
+Hint: use `toCallEvent$`, `handleCallEvent` and `scan`
+
+---
+
+<!--
+_class: lead
+-->
+
+# The Action Pattern
+## Alternative approach
