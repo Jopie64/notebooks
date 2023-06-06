@@ -387,3 +387,142 @@ _class: lead
 
 # The Action Pattern
 ## Alternative approach
+
+---
+
+### Remember the account example.
+
+```ts
+type Account = {
+    balance: number;
+}
+
+const handleAccountEvent: HandleAccountEvent<AccountEvent> =
+  (account, event) => // ...
+
+// Type of function that returns an account given a stream of events
+type GetAccount = (events: AccountEvent[]) => Account;
+
+const getAccount: GetAccount = events =>
+  events
+  .reduce(handleAccountEvent, emptyAccount);
+
+```
+
+---
+
+### Introducing an action:
+
+```ts
+type AccountAction = (account: Account) => Account;
+```
+
+Converting event stream to action stream:
+
+```ts
+// Remember: in our account example we use arrays instead of observables.
+type EventsToActions = (events: AccountEvent[]) => AccountAction[];
+
+const toAccountActions: EventsToActions = events =>
+    events
+    .map((event): AccountAction => account => handleAccountEvent(account, event));
+```
+
+---
+
+## Assignment 6
+
+Reimplement `GetAccount` using `toAccountActions`.
+
+```ts
+const getAccount: GetAccount = events =>
+  events
+  .reduce(handleAccountEvent, emptyAccount);
+```
+Becomes:
+```ts
+const getAccount2: GetAccount =
+    events => toAccountActions(events)
+        .reduce((account, action) => /* TODO: implement reducer here */, emptyAccount);
+```
+
+---
+
+### Calling example `toCallEvent$`
+
+```ts
+const toCallEvent$ = (incomingCall$: Observable<Call>): Observable<CallEvent> =>
+  incomingCall$.pipe(
+    // for every new call, start monitoring it...
+    mergeMap(newCall => merge([
+      // Handle call lifetime.
+      // Start with CallAddedEvent. Wait until it becomes 'Idle', and then end with CallRemovedEvent
+      concat(
+        of<CallAddedEvent>({ type: 'CallAddedEvent', id: newCall.id }),
+        newCall.state$.pipe(takeWhile(state => state !== 'Idle')),
+        of<CallRemovedEvent>({ type: 'CallRemovedEvent', id: newCall.id }),
+      ),
+      // Monitor state and info to emit CallStateChangeEvent and CallInfoChangeEvent events.
+      newCall.state$.pipe(
+        map((newState): CallStateChangeEvent => ({ type: 'CallStateChangeEvent', id: newCall.id, newState }))),
+      newCall.info$.pipe(
+        map((newInfo): CallInfoChangeEvent => ({ type: 'CallInfoChangeEvent', id: newCall.id, newInfo })))
+    ])));
+```
+
+---
+### Calling example `toCallAction$`
+
+```ts
+const toCallAction$ = (incomingCall$: Observable<Call>): Observable<CallAction> =>
+  incomingCall$.pipe(
+    // for every new call, start monitoring it...
+    mergeMap(newCall => merge([
+      // Handle call lifetime.
+      // Start with add call action. Wait until it becomes 'Idle', and then end with call remove action
+      concat(
+        // Emit an add call action
+        of<CallAction>(calls => calls.concat([{ ...emptyCall, id: newCall.id }])),
+        newCall.state$.pipe(takeWhile(state => state !== 'Idle')),
+        // Emit a call remove action
+        of<CallAction>(calls => calls.filter(call => call.id !== newCall.id )),
+      ),
+      // Monitor state and info to emit Call State Change and Call Info Change actions.
+      newCall.state$.pipe(
+        map((newState): CallAction => handleSingleCall(newCall.id, call => ({...call, state: newState })))),
+      newCall.info$.pipe(
+        map((newInfo): CallAction => handleSingleCall(newCall.id, call => ({...call, info: newInfo })))),
+    ])));
+```
+
+---
+
+### Assignment 7
+
+Implement `GetCurrentCallList` using `toCallAction$`
+
+```ts
+const getCurrentCallList2: GetCurrentCallList =
+    incomingCall$ =>
+
+            // TODO: Use the toCallAction$ function to convert the incoming call stream
+            // into a stream of actions
+
+            // Handle the actions by simply executing them
+```
+
+---
+
+<!--
+_class: lead
+-->
+
+# Recognize the pattern!
+
+---
+
+<!--
+_class: lead
+-->
+
+# Thanks for your attention
