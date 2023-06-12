@@ -427,6 +427,7 @@ const toAccountActions: EventsToActions = events =>
     events
     .map((event): AccountAction => account => handleAccountEvent(account, event));
 ```
+🤔
 
 ---
 
@@ -526,3 +527,7 @@ _class: lead
 -->
 
 # Thanks for your attention
+
+Why did the state management system go to therapy?
+
+Because it couldn't stop constantly changing its mind!
